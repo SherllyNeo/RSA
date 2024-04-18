@@ -13,7 +13,7 @@
 #define MAX_MESSAGE_LENGTH 1024
 
 
-void initNewKeys();
+void initNewKeys(char* filepath);
 
 void encrypt(char* text, char* filepath, char returnBuffer[MAX_MESSAGE_LENGTH]);
 

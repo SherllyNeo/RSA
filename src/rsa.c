@@ -202,8 +202,7 @@ void fileRead(char * filepath, char buffer[MAX_MESSAGE_LENGTH]) {
 }
 
 
-void initNewKeys() {
-    mkdir("./keys", S_IRWXU);
+void initNewKeys(char* filepath) {
     unsigned long int p, q;
     p = generateRandomPrime(MIN, MAX);
     q = generateRandomPrime(MIN, MAX);
@@ -218,12 +217,28 @@ void initNewKeys() {
     char pubBuffer[MAX_MESSAGE_LENGTH];
     memset(pubBuffer,'\0',MAX_MESSAGE_LENGTH*sizeof(char));
     sprintf(pubBuffer,"%li,%li\n", public_key_e,n);
-    fileWrite("./keys/pubKey.pub", pubBuffer);
 
     char privBuffer[MAX_MESSAGE_LENGTH];
     memset(privBuffer,'\0',MAX_MESSAGE_LENGTH*sizeof(char));
     sprintf(privBuffer,"%li,%li\n", private_key_d,n);
-    fileWrite("./keys/privKey.priv", privBuffer);
+
+
+    /* file writing */
+
+    if (filepath != NULL) {
+        char pubPath[MAX];
+        char privPath[MAX];
+        mkdir(filepath, S_IRWXU);
+        sprintf(pubPath,"%s/pubkey.pub",filepath);
+        sprintf(privPath,"%s/privkey.priv",filepath);
+        fileWrite(pubPath, pubBuffer);
+        fileWrite(privPath, privBuffer);
+    }
+    else {
+        mkdir("./keys", S_IRWXU);
+        fileWrite("./keys/pubKey.pub", pubBuffer);
+        fileWrite("./keys/privKey.priv", privBuffer);
+    }
 }
 
 

@@ -27,6 +27,8 @@ int main(int argc, char* argv[]) {
     char* text = NULL;
     bool encryptText = true;
     bool decryptText = false;
+    bool init = false;
+
 
     if (argc < 2) {
         printf("%s\n",help);
@@ -39,9 +41,7 @@ int main(int argc, char* argv[]) {
             return 0;
         }
         else if (!strcmp("-i",current_arg) || !strcmp("--init",current_arg)) {
-            initNewKeys();
-            printf("Initalised keys in ./keys directory\n");
-            return 0;
+            init = true;
         }
         else if (!strcmp("-e",current_arg) || !strcmp("--encrypt",current_arg)) {
             encryptText = true;
@@ -58,6 +58,17 @@ int main(int argc, char* argv[]) {
             text = argv[++i]; 
         }
 
+    }
+
+    if (init) {
+            initNewKeys(key_file_path);
+            if (key_file_path) {
+                printf("Initalised keys in %s directory\n",key_file_path);
+            }
+            else {
+                printf("Initalised keys in ./keys directory\n");
+            }
+            return 0;
     }
 
     if (!key_file_path) {
