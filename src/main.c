@@ -103,6 +103,26 @@ long int transform(long int message, long int exponent, long int modulus) {
     return modExp(message, exponent, modulus);
 }
 
+void transformArray(int inputLen,long int input[MAX_MESSAGE_LENGTH], long int output[MAX_MESSAGE_LENGTH],long int exponent, long int modulus) {
+    for (int i = 0; i < inputLen; i++) {
+        long int trans = transform(input[i], exponent, modulus);
+        output[i] = trans; 
+    }
+}
+
+void printArray(int length, int long arr[MAX_MESSAGE_LENGTH]) {
+    for (int i =0; i<length;i++) {
+        printf("%c ",(char)arr[i]);
+    }
+    printf("\n");
+}
+
+void arrayToString(int length, int long arr[MAX_MESSAGE_LENGTH],char string[MAX_MESSAGE_LENGTH]) {
+    for (int i =0; i<length;i++) {
+        string[i] = (char)arr[i];
+    }
+}
+
 
 int main() {
     long int p, q;
@@ -120,20 +140,42 @@ int main() {
            p, q, n, phi_n, public_key_e, private_key_d);
 
     long int message = rand() % 10000;
+    char* plainText = "HEY";
+    int length = strlen(plainText);
+    long int plainTextArr[strlen(plainText)+1];
+    memset(plainTextArr,0,strlen(plainText+1)*sizeof(long int));
+    for (int i =0; i<length; i++) {
+        plainTextArr[i] = (long int)plainText[i];
+    }
+    
 
     /*
         encrypt message 
      */
-    long int cipherText = transform(message,public_key_e,n);
+    long int cipherNumber = transform(message,public_key_e,n);
+    long int cipherTextArr[strlen(plainText)+1];
+    char cipherText[MAX_MESSAGE_LENGTH];
+    memset(cipherText,'\0',sizeof(cipherText));
+    memset(cipherTextArr,0,strlen(plainText+1)*sizeof(long int));
+    transformArray(length,plainTextArr, cipherTextArr, public_key_e,n);
+    arrayToString(length, cipherTextArr, cipherText);
 
     /*
         decrypt message 
      */
-    long int decipherText = transform(cipherText,private_key_d,n);
+    long int decipherNumber = transform(cipherNumber,private_key_d,n);
+    long int decipherTextArr[strlen(plainText)+1];
+    char decipherText[MAX_MESSAGE_LENGTH];
+    memset(decipherText,'\0',sizeof(decipherText));
+    memset(plainTextArr,0,strlen(plainText+1)*sizeof(long int));
+    transformArray(length,cipherTextArr, decipherTextArr, private_key_d,n);
+    arrayToString(length, decipherTextArr, decipherText);
 
 
-    printf("Message to encrypt %li, CipherText: %li, DecipheredText %li\n",message,cipherText,decipherText);
-    assert(decipherText == message);
+
+    printf("Message to encrypt %li, CipherNumber: %li, DecipheredNumber %li\n",message,cipherNumber,decipherNumber);
+    printf("Message to encrypt %s, CipherText: %s, DecipheredText: %s\n",plainText,cipherText,decipherText);
+    assert(decipherNumber == message);
 
 
     return 0;
