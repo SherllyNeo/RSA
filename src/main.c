@@ -11,7 +11,7 @@
 
 char help[] = "\nMoriarty's RSA Implimentation \n---------------------- \n\n \
 -h or --help to view help\n \
--i or --init to make new public and private keys\n \
+-i or --init to make new public and private keys, you can specify -k or --key_file_path to say where the key files should be, it will defeault to ./keys\n \
 -e or --encrypt to encrypt: rsa -e -t \"sample message\" -k \"path\\to\\publickey\"\n \
 -d or --decrypt to decrypt: rsa -d -t \"19229,338383\" -k \"path\\to\\privateckey\"\n \
 -k or --key_file_path is used to specify the path to either a public or private keyfile\n \
@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (encryptText) {
-        printf("encrytping: %s\n",text);
+        printf("encrypting: %s\n",text);
         char encryptedBuffer[MAX_MESSAGE_LENGTH];
         memset(encryptedBuffer,'\0',sizeof(encryptedBuffer));
         encrypt(text, key_file_path,encryptedBuffer);
