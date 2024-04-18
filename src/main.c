@@ -6,21 +6,30 @@
 #include <time.h>
 #include <stdint.h>
 #include <assert.h>
-
-long int gcd(long int a, long int b) {
-    while (b != 0) {
-        long int temp = b;
-        b = a % b;
-        a = temp;
-    }
-    return a;
-}
-
-bool areCoprime(long int a, long int b) {
-    return gcd(a, b) == 1;
-}
+#include <stdlib.h>
+#include <sys/stat.h>
 
 #define MAX_MESSAGE_LENGTH 1024
+#define EXT_BAD_PARAMS 1
+
+/* 
+TODO: use gmp library to use abitrary size
+ */
+
+ 
+long int gcd(long int x, long int y) {
+    while (y != 0) {
+        long int temp = y;
+        y = x % y;
+        x = temp;
+    }
+    return x;
+}
+
+bool areCoprime(long int x, long int y) {
+    return gcd(x, y) == 1;
+}
+
 
 bool isPrime(long int num) {
     if (num <= 1)
@@ -80,23 +89,19 @@ long int modInverse(long int a, long int m) {
 }
 
 
-
-
 long int findPublicKey(long int phi_n) {
-    long int public_key = 65537; 
-    if (public_key < phi_n && areCoprime(public_key, phi_n))
-        return public_key;
+    long int public_key = 3; 
+    if (public_key < phi_n && areCoprime(public_key, phi_n) && isPrime(public_key)) {
+            return public_key;
+    }
     else {
         for (long int i = 3; i < phi_n; i += 2) {
-            if (i < phi_n && areCoprime(i, phi_n))
+            if (i < phi_n && areCoprime(i, phi_n)) {
                 return i;
+            }
         }
     }
     return -1; 
-}
-
-long int transforM(long int message,long int power, long int modulus) {
-    return modExp(message, power, modulus);
 }
 
 long int transform(long int message, long int exponent, long int modulus) {
@@ -123,59 +128,294 @@ void arrayToString(int length, int long arr[MAX_MESSAGE_LENGTH],char string[MAX_
     }
 }
 
+void cipherarrayToString(const long int array[], int size, char *str) {
+    strcpy(str, ""); // Clear the string
+    char temp[20]; // Temporary buffer to hold each converted integer
 
-int main() {
+    for (int i = 0; i < size; i++) {
+        if (i < size-1) {
+            sprintf(temp, "%ld,", array[i]); // Convert the current integer to a string
+            strcat(str, temp); // Append the converted integer to the string
+        }
+        else {
+            sprintf(temp, "%ld\n", array[i]); // Convert the current integer to a string
+            strcat(str, temp); // Append the converted integer to the string
+        }
+    }
+
+    // Remove the trailing comma
+    if (strlen(str) > 0) {
+        str[strlen(str) - 1] = '\0';
+    }
+}
+
+void cipherstringToArray(const char *str, long int array[], int *size) {
+    char *token;
+    char copy[strlen(str) + 1];
+
+    strcpy(copy, str); 
+    *size = 0; 
+
+    token = strtok(copy, ",");
+    while (token != NULL && *size < MAX_MESSAGE_LENGTH) {
+        array[(*size)++] = strtol(token, NULL, 10);
+        token = strtok(NULL, ","); 
+    }
+}
+
+
+void fileWrite(const char *filepath, const char *buffer)
+{
+    FILE *f = fopen(filepath, "w");
+    if (f != NULL)
+    {
+        fputs(buffer, f);
+        fclose(f);
+    }
+}
+
+
+void fileRead(char * filepath, char buffer[MAX_MESSAGE_LENGTH]) {
+    FILE *f = fopen(filepath, "rb");
+    if (f == NULL) {
+        printf("Error opening file.\n");
+        return;
+    }
+
+    fseek(f, 0, SEEK_END);
+    long length = ftell(f);
+    rewind(f);
+
+    if (length >= MAX_MESSAGE_LENGTH) {
+        printf("File is too large.\n");
+        fclose(f);
+        return;
+    }
+
+    fread(buffer, sizeof(char), length, f);
+    buffer[length] = '\0'; 
+
+    fclose(f);
+
+}
+
+
+void initNewKeys() {
+    mkdir("./keys", S_IRWXU);
     long int p, q;
-    p = generateRandomPrime(10000, 20000);
-    q = generateRandomPrime(10000, 20000);
+    p = generateRandomPrime(1000, 10000);
+    q = generateRandomPrime(1000, 10000);
     while (p == q) {
-        q = generateRandomPrime(10000, 20000);
+        q = generateRandomPrime(1000, 10000);
     }
     long int n = p * q;
     long int phi_n = (p - 1) * (q - 1);
     long int public_key_e = findPublicKey(phi_n);
     long int private_key_d = modInverse(public_key_e, phi_n);
 
-    printf("Using p: %li and q: %li, found n: %li\n using totient %li and public key %li we calculated private key %li\n\n",
-           p, q, n, phi_n, public_key_e, private_key_d);
+    char pubBuffer[MAX_MESSAGE_LENGTH];
+    memset(pubBuffer,'\0',MAX_MESSAGE_LENGTH*sizeof(char));
+    sprintf(pubBuffer,"%li,%li\n", public_key_e,n);
+    fileWrite("./keys/pubKey.pub", pubBuffer);
 
-    long int message = rand() % 10000;
-    char* plainText = "HEY";
-    int length = strlen(plainText);
-    long int plainTextArr[strlen(plainText)+1];
-    memset(plainTextArr,0,strlen(plainText+1)*sizeof(long int));
+    char privBuffer[MAX_MESSAGE_LENGTH];
+    memset(privBuffer,'\0',MAX_MESSAGE_LENGTH*sizeof(char));
+    sprintf(privBuffer,"%li,%li\n", private_key_d,n);
+    fileWrite("./keys/privKey.priv", privBuffer);
+}
+
+
+int countCommas(const char *str) {
+    int count = 0;
+    int len = strlen(str);
+
+    for (int i = 0; i < len; i++) {
+        if (str[i] == ',') {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+void encrypt(char* text, char* filepath, char returnBuffer[MAX_MESSAGE_LENGTH]) {
+    /* read key and n */
+    
+    char buffer[MAX_MESSAGE_LENGTH];
+    memset(buffer,'\0',MAX_MESSAGE_LENGTH*sizeof(char));
+    fileRead(filepath,buffer);
+
+    char *token;
+    char key_str[MAX_MESSAGE_LENGTH/2]; 
+    char n_str[MAX_MESSAGE_LENGTH/2]; 
+                                      
+    token = strtok(buffer, ",");
+    
+    if (token != NULL) {
+        strcpy(key_str, token); 
+    }
+
+    token = strtok(NULL, ",");
+    if (token != NULL) {
+        strcpy(n_str, token); 
+    }
+
+    long key = atoi(key_str);
+    long n = atoi(n_str);
+
+    printf("from %s found key: %li and modulus %li\n",filepath,key,n);
+
+
+    /* convert text to array */
+    int length = strlen(text);
+    long int textArr[strlen(text)+1];
+    memset(textArr,0,strlen(text+1)*sizeof(long int));
     for (int i =0; i<length; i++) {
-        plainTextArr[i] = (long int)plainText[i];
+        textArr[i] = (long int)text[i];
     }
     
 
-    /*
-        encrypt message 
-     */
-    long int cipherNumber = transform(message,public_key_e,n);
-    long int cipherTextArr[strlen(plainText)+1];
-    char cipherText[MAX_MESSAGE_LENGTH];
-    memset(cipherText,'\0',sizeof(cipherText));
-    memset(cipherTextArr,0,strlen(plainText+1)*sizeof(long int));
-    transformArray(length,plainTextArr, cipherTextArr, public_key_e,n);
-    arrayToString(length, cipherTextArr, cipherText);
+    /*  transform message */
+    long tmp[MAX_MESSAGE_LENGTH];
+    transformArray(length,textArr, tmp, key,n);
 
-    /*
-        decrypt message 
-     */
-    long int decipherNumber = transform(cipherNumber,private_key_d,n);
-    long int decipherTextArr[strlen(plainText)+1];
-    char decipherText[MAX_MESSAGE_LENGTH];
-    memset(decipherText,'\0',sizeof(decipherText));
-    memset(plainTextArr,0,strlen(plainText+1)*sizeof(long int));
-    transformArray(length,cipherTextArr, decipherTextArr, private_key_d,n);
-    arrayToString(length, decipherTextArr, decipherText);
+    cipherarrayToString(tmp, length,returnBuffer);
+}
+
+void decrypt(char cipherText[MAX_MESSAGE_LENGTH], char* filepath, char returnString[MAX_MESSAGE_LENGTH]) {
+    /* read key and n */
+    int length = countCommas(cipherText)+1;
+    
+    char buffer[MAX_MESSAGE_LENGTH];
+    memset(buffer,'\0',MAX_MESSAGE_LENGTH*sizeof(char));
+    fileRead(filepath,buffer);
+
+    char *token;
+    char key_str[MAX_MESSAGE_LENGTH/2]; 
+    char n_str[MAX_MESSAGE_LENGTH/2]; 
+                                      
+    token = strtok(buffer, ",");
+    
+    if (token != NULL) {
+        strcpy(key_str, token); 
+    }
+
+    token = strtok(NULL, ",");
+    if (token != NULL) {
+        strcpy(n_str, token); 
+    }
+
+    long key = atoi(key_str);
+    long n = atoi(n_str);
+
+    printf("from %s found key: %li and modulo %li\n",filepath,key,n);
+
+    /* turn ciphertext into array */
+    long int cipherArr[MAX_MESSAGE_LENGTH]; 
+    memset(cipherArr,0,sizeof(cipherArr));
+
+
+    int lengthptr = length;
+    cipherstringToArray(cipherText, cipherArr, &lengthptr);
+
+
+    /*  transform message */
+
+    long int plainTextArr[MAX_MESSAGE_LENGTH];
+    char plainText[MAX_MESSAGE_LENGTH];
+    memset(plainText,'\0',sizeof(plainText));
+    memset(plainTextArr,0,MAX_MESSAGE_LENGTH*sizeof(long int));
+
+    transformArray(length,cipherArr, plainTextArr, key,n);
+
+    arrayToString(length, plainTextArr, plainText);
+
+    sprintf(returnString,"%s",plainText);
+}
 
 
 
-    printf("Message to encrypt %li, CipherNumber: %li, DecipheredNumber %li\n",message,cipherNumber,decipherNumber);
-    printf("Message to encrypt %s, CipherText: %s, DecipheredText: %s\n",plainText,cipherText,decipherText);
-    assert(decipherNumber == message);
+char help[] = "\nMoriarty's RSA Implimentation \n---------------------- \n\n \
+-h or --help to view help\n \
+-i or --init to make new public and private keys\n \
+-e or --encrypt to encrypt: rsa -e -t \"sample message\" -k \"path\\to\\publickey\"\n \
+-d or --decrypt to decrypt: rsa -d -t \"19229,338383\" -k \"path\\to\\privateckey\"\n \
+-k or --key_file_path is used to specify the path to either a public or private keyfile\n \
+-t or --text is used to specify the plaintext or ciphertext\n \
+";
+
+
+int main(int argc, char* argv[]) {
+
+
+    /*  Arg parsing */
+    char* key_file_path = NULL;
+    char* text = NULL;
+    bool encryptText = true;
+    bool decryptText = false;
+
+    if (argc < 2) {
+        printf("%s",help);
+    }
+
+    for (int i=0; i<argc; i++) {
+        char* current_arg = argv[i];
+        if (!strcmp("-h",current_arg) || !strcmp("--help",current_arg)) {
+            printf("\n%s\n",help);
+            return 0;
+        }
+        else if (!strcmp("-i",current_arg) || !strcmp("--init",current_arg)) {
+            initNewKeys();
+            printf("Initalised keys in ./keys directory\n");
+            return 0;
+        }
+        else if (!strcmp("-e",current_arg) || !strcmp("--encrypt",current_arg)) {
+            encryptText = true;
+            decryptText = false;
+        }
+        else if (!strcmp("-d",current_arg) || !strcmp("--decrypt",current_arg)) {
+            decryptText = true;
+            encryptText = false;
+        }
+        else if (!strcmp("-k",current_arg) || !strcmp("--key_file_path",current_arg)) {
+            key_file_path = argv[++i]; 
+        }
+        else if (!strcmp("-t",current_arg) || !strcmp("--text",current_arg)) {
+            text = argv[++i]; 
+        }
+
+    }
+
+    if (!key_file_path) {
+        printf("must provide a keyfile path with -k or --key_file_path, this can be either a private or public key file\nTry -h or --help for help");
+        exit(EXT_BAD_PARAMS);
+    }
+    if (!text) {
+        printf("must provide ciphertext or plaintext with -t or --text\nTry -h or --help for help");
+        exit(EXT_BAD_PARAMS);
+    }
+
+    if (encryptText) {
+        printf("encrytping: %s\n",text);
+        char encryptedBuffer[MAX_MESSAGE_LENGTH];
+        memset(encryptedBuffer,'\0',sizeof(encryptedBuffer));
+        encrypt(text, key_file_path,encryptedBuffer);
+        printf("[+] done\n %s\n",encryptedBuffer);
+    }
+    else if (decryptText) {
+        printf("decrypting %s\n",text);
+        char decryptedBuffer[MAX_MESSAGE_LENGTH];
+        memset(decryptedBuffer,'\0',sizeof(decryptedBuffer));
+        decrypt(text, key_file_path,decryptedBuffer);
+        printf("[+] done\n %s\n",decryptedBuffer);
+    }
+    else {
+        printf("ERROR: please input correct parameters");
+        printf("%s",help);
+        exit(EXT_BAD_PARAMS);
+    }
+
+
 
 
     return 0;
