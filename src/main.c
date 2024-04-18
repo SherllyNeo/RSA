@@ -11,40 +11,42 @@
 
 #define MAX_MESSAGE_LENGTH 1024
 #define EXT_BAD_PARAMS 1
+#define MIN 10000
+#define MAX 20000
 
 /* 
 TODO: use gmp library to use abitrary size
  */
 
  
-long int gcd(long int x, long int y) {
+unsigned long int gcd(unsigned long int x, unsigned long int y) {
     while (y != 0) {
-        long int temp = y;
+        unsigned long int temp = y;
         y = x % y;
         x = temp;
     }
     return x;
 }
 
-bool areCoprime(long int x, long int y) {
+bool areCoprime(unsigned long int x, unsigned long int y) {
     return gcd(x, y) == 1;
 }
 
 
-bool isPrime(long int num) {
+bool isPrime(unsigned long int num) {
     if (num <= 1)
         return false;
-    for (long int i = 2; i * i <= num; i++) {
+    for (unsigned long int i = 2; i * i <= num; i++) {
         if (num % i == 0)
             return false;
     }
     return true;
 }
 
-long int generateRandomPrime(long int lower, long int upper) {
+unsigned long int generateRandomPrime(unsigned long int lower, unsigned long int upper) {
     srand(time(NULL));
 
-    long int num = (rand() % (upper - lower + 1)) + lower;
+    unsigned long int num = (rand() % (upper - lower + 1)) + lower;
 
     if (num % 2 == 0)
         num++;
@@ -58,8 +60,8 @@ long int generateRandomPrime(long int lower, long int upper) {
     return num;
 }
 
-long int modExp(long int base, long int exponent, long int modulus) {
-    long int result = 1;
+unsigned long int modExp(unsigned long int base, unsigned long int exponent, unsigned long int modulus) {
+    unsigned long int result = 1;
     base = base % modulus;
     while (exponent > 0) {
         if (exponent & 1)
@@ -70,7 +72,7 @@ long int modExp(long int base, long int exponent, long int modulus) {
     return result;
 }
 
-long int modInverse(long int a, long int m) {
+unsigned long int modInverse(unsigned long int a, unsigned long int m) {
     long int m0 = m, t, q;
     long int x0 = 0, x1 = 1;
     if (m == 1)
@@ -89,13 +91,13 @@ long int modInverse(long int a, long int m) {
 }
 
 
-long int findPublicKey(long int phi_n) {
-    long int public_key = 3; 
+unsigned long int findPublicKey(unsigned long int phi_n) {
+    unsigned long int public_key = 3; 
     if (public_key < phi_n && areCoprime(public_key, phi_n) && isPrime(public_key)) {
             return public_key;
     }
     else {
-        for (long int i = 3; i < phi_n; i += 2) {
+        for (unsigned long int i = 3; i < phi_n; i += 2) {
             if (i < phi_n && areCoprime(i, phi_n)) {
                 return i;
             }
@@ -104,31 +106,31 @@ long int findPublicKey(long int phi_n) {
     return -1; 
 }
 
-long int transform(long int message, long int exponent, long int modulus) {
+unsigned long int transform(unsigned long int message, unsigned long int exponent, unsigned long int modulus) {
     return modExp(message, exponent, modulus);
 }
 
-void transformArray(int inputLen,long int input[MAX_MESSAGE_LENGTH], long int output[MAX_MESSAGE_LENGTH],long int exponent, long int modulus) {
+void transformArray(int inputLen,unsigned long int input[MAX_MESSAGE_LENGTH], unsigned long int output[MAX_MESSAGE_LENGTH],unsigned long int exponent, unsigned long int modulus) {
     for (int i = 0; i < inputLen; i++) {
-        long int trans = transform(input[i], exponent, modulus);
+        unsigned long int trans = transform(input[i], exponent, modulus);
         output[i] = trans; 
     }
 }
 
-void printArray(int length, int long arr[MAX_MESSAGE_LENGTH]) {
+void printArray(int length, int unsigned long arr[MAX_MESSAGE_LENGTH]) {
     for (int i =0; i<length;i++) {
         printf("%c ",(char)arr[i]);
     }
     printf("\n");
 }
 
-void arrayToString(int length, int long arr[MAX_MESSAGE_LENGTH],char string[MAX_MESSAGE_LENGTH]) {
+void arrayToString(int length, int unsigned long arr[MAX_MESSAGE_LENGTH],char string[MAX_MESSAGE_LENGTH]) {
     for (int i =0; i<length;i++) {
         string[i] = (char)arr[i];
     }
 }
 
-void cipherarrayToString(const long int array[], int size, char *str) {
+void cipherarrayToString(const unsigned long int array[], int size, char *str) {
     strcpy(str, ""); // Clear the string
     char temp[20]; // Temporary buffer to hold each converted integer
 
@@ -149,7 +151,7 @@ void cipherarrayToString(const long int array[], int size, char *str) {
     }
 }
 
-void cipherstringToArray(const char *str, long int array[], int *size) {
+void cipherstringToArray(const char *str, unsigned long int array[], int *size) {
     char *token;
     char copy[strlen(str) + 1];
 
@@ -183,7 +185,7 @@ void fileRead(char * filepath, char buffer[MAX_MESSAGE_LENGTH]) {
     }
 
     fseek(f, 0, SEEK_END);
-    long length = ftell(f);
+    unsigned long length = ftell(f);
     rewind(f);
 
     if (length >= MAX_MESSAGE_LENGTH) {
@@ -202,16 +204,16 @@ void fileRead(char * filepath, char buffer[MAX_MESSAGE_LENGTH]) {
 
 void initNewKeys() {
     mkdir("./keys", S_IRWXU);
-    long int p, q;
-    p = generateRandomPrime(1000, 10000);
-    q = generateRandomPrime(1000, 10000);
+    unsigned long int p, q;
+    p = generateRandomPrime(MIN, MAX);
+    q = generateRandomPrime(MIN, MAX);
     while (p == q) {
-        q = generateRandomPrime(1000, 10000);
+        q = generateRandomPrime(MIN, MAX);
     }
-    long int n = p * q;
-    long int phi_n = (p - 1) * (q - 1);
-    long int public_key_e = findPublicKey(phi_n);
-    long int private_key_d = modInverse(public_key_e, phi_n);
+    unsigned long int n = p * q;
+    unsigned long int phi_n = (p - 1) * (q - 1);
+    unsigned long int public_key_e = findPublicKey(phi_n);
+    unsigned long int private_key_d = modInverse(public_key_e, phi_n);
 
     char pubBuffer[MAX_MESSAGE_LENGTH];
     memset(pubBuffer,'\0',MAX_MESSAGE_LENGTH*sizeof(char));
@@ -260,23 +262,23 @@ void encrypt(char* text, char* filepath, char returnBuffer[MAX_MESSAGE_LENGTH]) 
         strcpy(n_str, token); 
     }
 
-    long key = atoi(key_str);
-    long n = atoi(n_str);
+    unsigned long key = atoi(key_str);
+    unsigned long n = atoi(n_str);
 
     printf("from %s found key: %li and modulus %li\n",filepath,key,n);
 
 
     /* convert text to array */
     int length = strlen(text);
-    long int textArr[strlen(text)+1];
-    memset(textArr,0,strlen(text+1)*sizeof(long int));
+    unsigned long int textArr[strlen(text)+1];
+    memset(textArr,0,strlen(text+1)*sizeof(unsigned long int));
     for (int i =0; i<length; i++) {
-        textArr[i] = (long int)text[i];
+        textArr[i] = (unsigned long int)text[i];
     }
     
 
     /*  transform message */
-    long tmp[MAX_MESSAGE_LENGTH];
+    unsigned long tmp[MAX_MESSAGE_LENGTH];
     transformArray(length,textArr, tmp, key,n);
 
     cipherarrayToString(tmp, length,returnBuffer);
@@ -305,13 +307,13 @@ void decrypt(char cipherText[MAX_MESSAGE_LENGTH], char* filepath, char returnStr
         strcpy(n_str, token); 
     }
 
-    long key = atoi(key_str);
-    long n = atoi(n_str);
+    unsigned long key = atoi(key_str);
+    unsigned long n = atoi(n_str);
 
     printf("from %s found key: %li and modulo %li\n",filepath,key,n);
 
     /* turn ciphertext into array */
-    long int cipherArr[MAX_MESSAGE_LENGTH]; 
+    unsigned long int cipherArr[MAX_MESSAGE_LENGTH]; 
     memset(cipherArr,0,sizeof(cipherArr));
 
 
@@ -321,10 +323,10 @@ void decrypt(char cipherText[MAX_MESSAGE_LENGTH], char* filepath, char returnStr
 
     /*  transform message */
 
-    long int plainTextArr[MAX_MESSAGE_LENGTH];
+    unsigned long int plainTextArr[MAX_MESSAGE_LENGTH];
     char plainText[MAX_MESSAGE_LENGTH];
     memset(plainText,'\0',sizeof(plainText));
-    memset(plainTextArr,0,MAX_MESSAGE_LENGTH*sizeof(long int));
+    memset(plainTextArr,0,MAX_MESSAGE_LENGTH*sizeof(unsigned long int));
 
     transformArray(length,cipherArr, plainTextArr, key,n);
 
