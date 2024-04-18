@@ -110,6 +110,18 @@ unsigned long int transform(unsigned long int message, unsigned long int exponen
     return modExp(message, exponent, modulus);
 }
 
+unsigned long int chinese_remainder_decrypt(unsigned long int message, unsigned long int exponent, unsigned long int modulus, unsigned long int factor1, unsigned long int factor2) {
+    unsigned long int smaller_message1 = message % factor1;
+    unsigned long int smaller_exponent1 = exponent % (factor1-1);
+    unsigned long int result1 = modExp(smaller_message1,smaller_exponent1,factor1);
+
+    unsigned long int smaller_message2 = message % factor2;
+    unsigned long int smaller_exponent2 = exponent % (factor2-2);
+    unsigned long int result2 = modExp(smaller_message2,smaller_exponent2,factor2);
+
+    return result1;
+}
+
 void transformArray(int inputLen,unsigned long int input[MAX_MESSAGE_LENGTH], unsigned long int output[MAX_MESSAGE_LENGTH],unsigned long int exponent, unsigned long int modulus) {
     for (int i = 0; i < inputLen; i++) {
         unsigned long int trans = transform(input[i], exponent, modulus);
