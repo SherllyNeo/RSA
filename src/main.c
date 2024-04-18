@@ -1,167 +1,140 @@
-#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <string.h>
 #include <stdbool.h>
+#include <string.h>
+#include <ctype.h>
 #include <time.h>
+#include <stdint.h>
+#include <assert.h>
 
+long int gcd(long int a, long int b) {
+    while (b != 0) {
+        long int temp = b;
+        b = a % b;
+        a = temp;
+    }
+    return a;
+}
 
-// Function to check if a number is prime
-bool isPrime(int num) {
+bool areCoprime(long int a, long int b) {
+    return gcd(a, b) == 1;
+}
+
+#define MAX_MESSAGE_LENGTH 1024
+
+bool isPrime(long int num) {
     if (num <= 1)
         return false;
-    for (int i = 2; i * i <= num; i++) {
+    for (long int i = 2; i * i <= num; i++) {
         if (num % i == 0)
             return false;
     }
     return true;
 }
 
-// Function to generate a random prime number within a given range
-int generateRandomPrime(int lower, int upper) {
-    // Seed the random number generator
+long int generateRandomPrime(long int lower, long int upper) {
     srand(time(NULL));
 
-    // Generate a random number within the range
-    int num = (rand() % (upper - lower + 1)) + lower;
+    long int num = (rand() % (upper - lower + 1)) + lower;
 
-    // If the number is even, make it odd
     if (num % 2 == 0)
         num++;
 
-    // Keep generating random numbers until a prime is found
     while (!isPrime(num)) {
-        num += 2; // Increment by 2 to skip even numbers
-        if (num > upper) // If we exceed the upper limit, start from lower limit again
+        num += 2; 
+        if (num > upper) 
             num = lower + (num - upper - 1);
     }
 
     return num;
 }
 
-
-
-long int modInverse( long int X, long int Y)
-{
-    for (int i = 1; i < Y; i++)
-        if (((X % Y) * (i % Y)) % Y == 1) {
-            return i;
-        }
-    return -1;
-}
-
-
-void encrypt_text(char* text, char* output,int public_key_e, int public_key_n) {
-    for (int i = 0; i<(long int)strlen(text);i++) {
-        if (text[i] == ' ') {
-            output[i] = ' ';
-        }
-        else {
-            long int encoded = toupper(text[i])-'A';
-            output[i] = ((long int)pow(encoded,public_key_e) % public_key_n) + 'A';
-        }
+long int modExp(long int base, long int exponent, long int modulus) {
+    long int result = 1;
+    base = base % modulus;
+    while (exponent > 0) {
+        if (exponent & 1)
+            result = (result * base) % modulus;
+        exponent = exponent >> 1;
+        base = (base * base) % modulus;
     }
+    return result;
 }
 
-void decrypt_text(char* text, char* output,int private_key_d, int public_key_n) {
-    for (int i = 0; i<(long int)strlen(text);i++) {
-        if (text[i] == ' ') {
-            output[i] = ' ';
-        }
-        else {
-            long int cipher_li = toupper(text[i])-'A';
-            output[i] = ((long int)pow(cipher_li,private_key_d) % public_key_n)+'A';
-        }
+long int modInverse(long int a, long int m) {
+    long int m0 = m, t, q;
+    long int x0 = 0, x1 = 1;
+    if (m == 1)
+        return 0;
+    while (a > 1) {
+        q = a / m;
+        t = m;
+        m = a % m, a = t;
+        t = x0;
+        x0 = x1 - q * x0;
+        x1 = t;
     }
+    if (x1 < 0)
+        x1 += m0;
+    return x1;
 }
 
-// Function to calculate the greatest common divisor (GCD)
-int gcd(int a, int b) {
-    if (b == 0)
-        return a;
-    return gcd(b, a % b);
-}
 
-// Function to check if two numbers are coprime
-bool areCoprime(int a, int b) {
-    return gcd(a, b) == 1;
-}
 
-// Function to find the public key given the totient (phi) and n
-int findPublicKey(int phi_n) {
-    int public_key = 3; // Conventionally chosen public key
-    if (areCoprime(public_key, phi_n))
+
+long int findPublicKey(long int phi_n) {
+    long int public_key = 65537; 
+    if (public_key < phi_n && areCoprime(public_key, phi_n))
         return public_key;
     else {
-        // If not coprime, find the next coprime number
-        for (int i = 3; i < phi_n; i += 2) {
-            if (areCoprime(i, phi_n))
+        for (long int i = 3; i < phi_n; i += 2) {
+            if (i < phi_n && areCoprime(i, phi_n))
                 return i;
         }
     }
-    return -1; // Error: No coprime number found
+    return -1; 
 }
 
- 
-int main(int argc, char *argv[])
-{
-    int messageAsInts[2024];
-    /* generate two primes p and q, and make n their product which is a semi prime  */
-    long int p = generateRandomPrime(0, 30);
-    long int q = generateRandomPrime(0, 30);
+long int transforM(long int message,long int power, long int modulus) {
+    return modExp(message, power, modulus);
+}
+
+long int transform(long int message, long int exponent, long int modulus) {
+    return modExp(message, exponent, modulus);
+}
+
+
+int main() {
+    long int p, q;
+    p = generateRandomPrime(10000, 20000);
+    q = generateRandomPrime(10000, 20000);
     while (p == q) {
-        q = generateRandomPrime(0, 30);
+        q = generateRandomPrime(10000, 20000);
     }
-    p = 17;
-    q = 31;
+    long int n = p * q;
+    long int phi_n = (p - 1) * (q - 1);
+    long int public_key_e = findPublicKey(phi_n);
+    long int private_key_d = modInverse(public_key_e, phi_n);
 
-    long int n = p*q;
+    printf("Using p: %li and q: %li, found n: %li\n using totient %li and public key %li we calculated private key %li\n\n",
+           p, q, n, phi_n, public_key_e, private_key_d);
 
-
-    /* calculate the totient of n */
-    long int phi_n = (p-1)*(q-1);
-
-    /* 
-     generate the public key, e, that follows 3 rules
-     1. Must be below the totient and above 2
-     2. must be coprime with the totient 
-     3. 
-     */
-
-    long int e = findPublicKey(phi_n);
-
-    /* 
-    Generate the private key, d the modulo inverse of e with respect to totient of n
-    */
-    long int d = modInverse(e, phi_n);
-
-    printf("Using p: %li and q: %li, found n: %li\n using totient %li and public key %li we calculated private key %li\n",p,q,n,phi_n,e,d);
+    long int message = rand() % 10000;
 
     /*
-     Encrypt paintext
+        encrypt message 
      */
-    char* plaintext = "The quick brown fox jumped over the lazy dog";
-    char ciphertext[2024];
-    memset(ciphertext,0,sizeof(ciphertext));
-    encrypt_text(plaintext, ciphertext, e, n);
-    printf("turned %s plaintext into %s ciphertext\n",plaintext,ciphertext);
+    long int cipherText = transform(message,public_key_e,n);
 
     /*
-     Decrypt cipher text
+        decrypt message 
      */
-    char decryptedplaintext[2024];
-    memset(decryptedplaintext,0,sizeof(ciphertext));
-    decrypt_text(ciphertext, decryptedplaintext, d, n);
-    printf("turned %s ciphertext into %s plaintext\n",ciphertext,decryptedplaintext);
+    long int decipherText = transform(cipherText,private_key_d,n);
 
 
-    /* working example with int 
-    long int message = 8;
-    long int ciphertexts = (long int)pow(message,e) % n;
-    long int plaintexts = (long int)pow(ciphertexts,d) % n;
-    printf("encrypting %li to get %li and then decryptng to get %li\n",message,ciphertexts,plaintexts);
-    */
+    printf("Message to encrypt %li, CipherText: %li, DecipheredText %li\n",message,cipherText,decipherText);
+    assert(decipherText == message);
 
-    return EXIT_SUCCESS;
+
+    return 0;
 }
