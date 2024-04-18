@@ -13,6 +13,7 @@
 #define EXT_BAD_PARAMS 1
 #define MIN 10000
 #define MAX 20000
+#define GAP 5000
 
 /* 
 TODO: use gmp library to use abitrary size
@@ -207,7 +208,7 @@ void initNewKeys() {
     unsigned long int p, q;
     p = generateRandomPrime(MIN, MAX);
     q = generateRandomPrime(MIN, MAX);
-    while (p == q) {
+    while ((p-q) < GAP) {
         q = generateRandomPrime(MIN, MAX);
     }
     unsigned long int n = p * q;
